@@ -70,3 +70,4 @@ html/*
 # Misc
 .DS_Store
 .vscode/*
+Tests/somevenv
