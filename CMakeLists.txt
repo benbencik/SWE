@@ -67,6 +67,10 @@ else()
   message(WARNING "IPO/LTO not supported")
 endif()
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-mavx -mfma)
+endif()
+
 add_library(SWE-Interface INTERFACE)
 target_compile_features(SWE-Interface INTERFACE cxx_std_${CMAKE_CXX_STANDARD})
 
@@ -121,7 +125,7 @@ endif()
 
 option(ENABLE_NETCDF "Enable output writing with NetCDF." ON)
 if(ENABLE_NETCDF)
-  set(NETCDF_CXX "YES")
+  set(NETCDF_CXX "NO")
   find_package(NetCDF REQUIRED)
   target_link_libraries(SWE-Interface INTERFACE ${NETCDF_LIBRARIES} ${NETCDF_LIBRARIES_CXX})
   target_include_directories(SWE-Interface INTERFACE ${NETCDF_INCLUDES})
