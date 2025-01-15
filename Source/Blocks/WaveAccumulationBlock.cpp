@@ -64,7 +64,7 @@ void Blocks::WaveAccumulationBlock::computeNumericalFluxes() {
 #if defined(ENABLE_VECTORIZATION) && defined(ENABLE_OPENMP) // Vectorize the inner loop
 #pragma omp simd reduction(max : maxWaveSpeedLocal)
 #elif defined(ENABLE_OPENMP)
-#pragma omp reduction(max : maxWaveSpeedLocal)
+#pragma omp schedule(dynamic) reduction(max : maxWaveSpeedLocal)
 #elif defined(ENABLE_VECTORIZATION)
 #pragma omp simd reduction(max : maxWaveSpeed)
 #endif
@@ -103,7 +103,7 @@ void Blocks::WaveAccumulationBlock::computeNumericalFluxes() {
     }
 
 #ifdef ENABLE_OPENMP
-#pragma omp for
+#pragma omp for 
 #endif
     // Compute the net-updates for the horizontal edges
     for (int i = 1; i < nx_ + 1; i++) {
@@ -111,7 +111,7 @@ void Blocks::WaveAccumulationBlock::computeNumericalFluxes() {
 #if defined(ENABLE_VECTORIZATION) && defined(ENABLE_OPENMP)
 #pragma omp simd reduction(max : maxWaveSpeedLocal)
 #elif defined(ENABLE_OPENMP)
-#pragma omp reduction(max : maxWaveSpeedLocal)
+#pragma omp schedule(dynamic) reduction(max : maxWaveSpeedLocal)
 #elif defined(ENABLE_VECTORIZATION)
 #pragma omp simd reduction(max : maxWaveSpeed)
 #endif
