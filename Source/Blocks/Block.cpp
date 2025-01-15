@@ -45,6 +45,7 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+#include <omp.h>
 
 static constexpr RealType GRAVITY = 9.81f;
 
@@ -392,6 +393,7 @@ void Blocks::Block::computeMaxTimeStep(const RealType dryTol, const RealType cfl
   RealType maximumWaveSpeed = RealType(0.0);
 
   // Compute the maximum wave speed within the grid
+  #pragma omp parallel for collapse(2) schedule(dynamic) reduction(max:maximumWaveSpeed)
   for (int i = 1; i <= nx_; i++) {
     for (int j = 1; j <= ny_; j++) {
       if (h_[i][j] > dryTol) {
