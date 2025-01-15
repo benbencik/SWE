@@ -148,7 +148,10 @@ elseif(WITH_SOLVER STREQUAL "Rusanov")
 endif()
 
 find_package(Catch2 REQUIRED)
-find_package(SWE-Solvers REQUIRED)
+# find_package(SWE-Solvers REQUIRED)  # Comment out this line
+
+# Add the submodule directory
+add_subdirectory(external/swe-solvers)
 
 add_subdirectory(Source)
 add_subdirectory(Tests)
