@@ -48,9 +48,9 @@ namespace Tools {
     int rows_;
     int cols_;
 
-    T* data_;
-
+    T*   data_;
     bool allocateMemory_;
+    T**  columnPointers_;
 
   public:
     /**
@@ -64,27 +64,33 @@ namespace Tools {
       rows_(rows),
       cols_(cols),
       data_(nullptr),
-      allocateMemory_(allocateMemory) {
+      allocateMemory_(allocateMemory),
+      columnPointers_(nullptr) {
 
       if (allocateMemory_) {
         data_ = new T[rows * cols];
       }
+
+      // Precompute column pointers
+      columnPointers_ = new T*[cols_];
+      for (int i = 0; i < cols_; ++i) {
+        columnPointers_[i] = data_ + (rows_ * i);
+      }
     }
 
-    /**
-     * Constructor:
-     * takes size of the 2D array as parameters and creates a respective Float2D object;
-     * this constructor does not allocate memory for the array, but uses the allocated memory
-     * provided via the respective variable #data
-     * @param cols number of columns (i.e., elements in horizontal direction)
-     * @param rows rumber of rows (i.e., elements in vertical directions)
-     * @param data pointer to a suitably allocated region of memory to be used for thew array elements
-     */
     Float2D(int cols, int rows, T* data):
       rows_(rows),
       cols_(cols),
       data_(data),
-      allocateMemory_(false) {}
+      allocateMemory_(false),
+      columnPointers_(nullptr) {
+
+      // Precompute column pointers
+      columnPointers_ = new T*[cols_];
+      for (int i = 0; i < cols_; ++i) {
+        columnPointers_[i] = data_ + (rows_ * i);
+      }
+    }
 
     /**
      * Constructor:
@@ -98,17 +104,23 @@ namespace Tools {
     Float2D(Float2D<T>& data, bool shallowCopy):
       rows_(data.rows_),
       cols_(data.cols_),
-      allocateMemory_(!shallowCopy) {
+      data_(shallowCopy ? data.data_ : nullptr),
+      allocateMemory_(!shallowCopy),
+      columnPointers_(nullptr) {
 
       if (shallowCopy) {
-        data_           = data.data_;
-        allocateMemory_ = false;
+        // Reuse the column pointers from the original object
+        columnPointers_ = data.columnPointers_;
       } else {
-        data_ = new T[rows_ * cols_];
-        for (int i = 0; i < rows_ * cols_; i++) {
+        // Allocate new memory and perform a deep copy
+        data_           = new T[rows_ * cols_];
+        columnPointers_ = new T*[cols_];
+        for (int i = 0; i < rows_ * cols_; ++i) {
           data_[i] = data.data_[i];
         }
-        allocateMemory_ = true;
+        for (int i = 0; i < cols_; ++i) {
+          columnPointers_[i] = data_ + (rows_ * i);
+        }
       }
     }
 
@@ -116,11 +128,15 @@ namespace Tools {
       if (allocateMemory_) {
         delete[] data_;
       }
+      delete[] columnPointers_;
     }
 
-    T* operator[](int i) { return (data_ + (rows_ * i)); }
+    /**
+     * Access operator using precomputed column pointers.
+     */
+    inline T* operator[](int i) { return columnPointers_[i]; }
 
-    const T* operator[](int i) const { return (data_ + (rows_ * i)); }
+    inline const T* operator[](int i) const { return columnPointers_[i]; }
 
     T* getData() { return data_; }
 
@@ -128,7 +144,7 @@ namespace Tools {
 
     int getCols() const { return cols_; }
 
-    Float1D<T> getColProxy(int i) { return Float1D<T>(data_ + (rows_ * i), rows_); }
+    Float1D<T> getColProxy(int i) { return Float1D<T>(columnPointers_[i], rows_); }
 
     Float1D<T> getRowProxy(int j) { return Float1D<T>(data_ + j, cols_, rows_); }
 
