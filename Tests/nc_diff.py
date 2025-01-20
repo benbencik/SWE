@@ -16,7 +16,7 @@ def compare_results(h1, hu1, hv1, h2, hu2, hv2):
     print("All values match!")
 
 if __name__ == "__main__":
-    baseline = 'SWE_baseline_250x250.nc'
+    baseline = 'SWE_vecsolver_250x250.nc'
     
     #! change the following line
     test = 'SWE_00.nc' 

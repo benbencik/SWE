@@ -36,6 +36,7 @@
 #include "HybridSolver.hpp"
 #elif defined(WITH_SOLVER_FWAVE)
 #include "FWaveSolver.hpp"
+#include "FWaveVecSolver.hpp"
 #elif defined(WITH_SOLVER_AUGRIE)
 #include "AugRieSolver.hpp"
 #else
@@ -59,7 +60,7 @@ namespace Blocks {
     Solvers::HybridSolver<RealType> wavePropagationSolver_;
 #elif defined(WITH_SOLVER_FWAVE)
     //! F-wave Riemann solver
-    Solvers::FWaveSolver<RealType> wavePropagationSolver_;
+    Solvers::FWaveVecSolver<RealType> wavePropagationSolver_;
 #elif defined(WITH_SOLVER_AUGRIE)
     //! Approximate Augmented Riemann solver
     Solvers::AugRieSolver<RealType> wavePropagationSolver_;
@@ -131,12 +132,7 @@ namespace Blocks {
      * </pre>
      */
     WavePropagationBlock(int nx, int ny, RealType dx, RealType dy);
-    WavePropagationBlock(
-      int nx, int ny, RealType dx, RealType dy,
-      Tools::Float2D<RealType>& h,
-      Tools::Float2D<RealType>& hu,
-      Tools::Float2D<RealType>& hv
-    );
+    WavePropagationBlock(int nx, int ny, RealType dx, RealType dy, Tools::Float2D<RealType>& h, Tools::Float2D<RealType>& hu, Tools::Float2D<RealType>& hv);
     ~WavePropagationBlock() override = default;
 
     /**
