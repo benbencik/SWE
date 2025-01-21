@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.21)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -mavx2")
+# Enable AVX support
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-mavx)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  add_compile_options(/arch:AVX)
+endif()
 set(SWE_PROJECT_NAME        "SWE")
 set(SWE_PROJECT_DESCRIPTION "An Education-Oriented Code for Tsunami Simulation")
 set(SWE_AUTHOR_ORGANIZATION "Chair of Scientific Computing, Department of Informatics, Technische Universitaet Muenchen")
