@@ -1,0 +1,10 @@
+Wed Jan 22 13:35:24 2025	Process 0 - CPU Time: 15.0694 seconds
+Wed Jan 22 13:35:41 2025	Process 0 - CPU Time: 14.3055 seconds
+Wed Jan 22 13:35:57 2025	Process 0 - CPU Time: 14.4349 seconds
+Wed Jan 22 13:36:13 2025	Process 0 - CPU Time: 14.1407 seconds
+Wed Jan 22 13:36:29 2025	Process 0 - CPU Time: 14.254 seconds
+Wed Jan 22 13:36:46 2025	Process 0 - CPU Time: 15.384 seconds
+Wed Jan 22 13:37:02 2025	Process 0 - CPU Time: 13.99 seconds
+Wed Jan 22 13:37:19 2025	Process 0 - CPU Time: 14.8507 seconds
+Wed Jan 22 13:37:38 2025	Process 0 - CPU Time: 15.0578 seconds
+Wed Jan 22 13:37:54 2025	Process 0 - CPU Time: 13.8498 seconds
