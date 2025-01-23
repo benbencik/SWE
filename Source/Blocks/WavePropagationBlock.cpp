@@ -31,7 +31,7 @@
 #include "WavePropagationBlock.hpp"
 
 #include <iostream>
-#include <omp.h>
+#include <omp.h> // Include OpenMP header
 
 Blocks::WavePropagationBlock::WavePropagationBlock(int nx, int ny, RealType dx, RealType dy):
   Block(nx, ny, dx, dy),
@@ -63,16 +63,14 @@ void Blocks::WavePropagationBlock::computeNumericalFluxes() {
 
 #pragma omp parallel
   {
-    // Initialize two local maximum wave speeds for vertical and horizontal edges
-    RealType maxWaveSpeedLocal_u = RealType(0.0);
-    RealType maxWaveSpeedLocal_v = RealType(0.0);
+    RealType maxWaveSpeedLocal = RealType(0.0);
 
-#pragma omp for
-    for (int i = 1; i < nx_ + 1; i++) {
-#pragma omp simd reduction(max : maxWaveSpeedLocal_u) reduction(max : maxWaveSpeedLocal_v)
+// Compute the net-updates for the vertical edges
+#pragma omp for schedule(dynamic) reduction(max : maxWaveSpeedLocal)
+    for (int i = 1; i < nx_ + 2; i++) {
       for (int j = 1; j < ny_ + 1; ++j) {
-        // Compute the net-updates for the vertical edges
         RealType maxEdgeSpeed = RealType(0.0);
+
         wavePropagationSolver_.computeNetUpdates(
           h_[i - 1][j],
           h_[i][j],
@@ -88,10 +86,16 @@ void Blocks::WavePropagationBlock::computeNumericalFluxes() {
         );
 
         // Update the thread-local maximum wave speed
-        maxWaveSpeedLocal_u = std::max(maxWaveSpeed, maxEdgeSpeed);
+        maxWaveSpeedLocal = std::max(maxWaveSpeedLocal, maxEdgeSpeed);
+      }
+    }
 
-        // Compute the net-updates for the horizontal edges
-        maxEdgeSpeed = RealType(0.0);
+// Compute the net-updates for the horizontal edges
+#pragma omp for schedule(dynamic) reduction(max : maxWaveSpeedLocal)
+    for (int i = 1; i < nx_ + 1; i++) {
+      for (int j = 1; j < ny_ + 2; j++) {
+        RealType maxEdgeSpeed = RealType(0.0);
+
         wavePropagationSolver_.computeNetUpdates(
           h_[i][j - 1],
           h_[i][j],
@@ -107,54 +111,13 @@ void Blocks::WavePropagationBlock::computeNumericalFluxes() {
         );
 
         // Update the thread-local maximum wave speed
-        maxWaveSpeedLocal_v = std::max(maxWaveSpeed, maxEdgeSpeed);
+        maxWaveSpeedLocal = std::max(maxWaveSpeedLocal, maxEdgeSpeed);
       }
     }
 
-// Dealing with the vertical edges for cells on the nx_+1 boundary
-#pragma omp for
-    for (int j = 1; j < ny_ + 1; ++j) {
-      RealType maxEdgeSpeed = RealType(0.0);
-      wavePropagationSolver_.computeNetUpdates(
-        h_[nx_][j],
-        h_[nx_ + 1][j],
-        hu_[nx_][j],
-        hu_[nx_ + 1][j],
-        b_[nx_][j],
-        b_[nx_ + 1][j],
-        hNetUpdatesLeft_[nx_][j - 1],
-        hNetUpdatesRight_[nx_][j - 1],
-        huNetUpdatesLeft_[nx_][j - 1],
-        huNetUpdatesRight_[nx_][j - 1],
-        maxEdgeSpeed
-      );
-      maxWaveSpeedLocal_u = std::max(maxWaveSpeed, maxEdgeSpeed);
-    }
-
-// Dealing with the horizontal edges for cells on the ny_+1 boundary
-#pragma omp for
-    for (int i = 1; i < nx_ + 1; ++i) {
-      RealType maxEdgeSpeed = RealType(0.0);
-      wavePropagationSolver_.computeNetUpdates(
-        h_[i][ny_],
-        h_[i][ny_ + 1],
-        hv_[i][ny_],
-        hv_[i][ny_ + 1],
-        b_[i][ny_],
-        b_[i][ny_ + 1],
-        hNetUpdatesBelow_[i - 1][ny_],
-        hNetUpdatesAbove_[i - 1][ny_],
-        hvNetUpdatesBelow_[i - 1][ny_],
-        hvNetUpdatesAbove_[i - 1][ny_],
-        maxEdgeSpeed
-      );
-      maxWaveSpeedLocal_v = std::max(maxWaveSpeed, maxEdgeSpeed);
-    }
-
 #pragma omp critical
-    { maxWaveSpeed = std::max(std::max(maxWaveSpeedLocal_u, maxWaveSpeedLocal_v), maxWaveSpeed); }
-  }
-
+    { maxWaveSpeed = std::max(maxWaveSpeed, maxWaveSpeedLocal); }
+  } // end of parallel region
 
   if (maxWaveSpeed > 0.00001) {
     // Compute the time step width
@@ -168,54 +131,29 @@ void Blocks::WavePropagationBlock::computeNumericalFluxes() {
   }
 }
 
-#include <immintrin.h> // For SIMD intrinsics
-
 void Blocks::WavePropagationBlock::updateUnknowns(RealType dt) {
-  __m256d dt_dx  = _mm256_set1_pd(dt / dx_);
-  __m256d dt_dy  = _mm256_set1_pd(dt / dy_);
-  __m256d zero   = _mm256_set1_pd(0.0);
-  __m256d dryTol = _mm256_set1_pd(0.1);
-
   // Update cell averages with the net-updates
   for (int i = 1; i < nx_ + 1; i++) {
-    for (int j = 1; j < ny_ + 1; j += 4) { // Process 4 elements at a time for double precision
-      __m256d h  = _mm256_loadu_pd(&h_[i][j]);
-      __m256d hu = _mm256_loadu_pd(&hu_[i][j]);
-      __m256d hv = _mm256_loadu_pd(&hv_[i][j]);
+    for (int j = 1; j < ny_ + 1; j++) {
+      h_[i][j] -= dt / dx_ * (hNetUpdatesRight_[i - 1][j - 1] + hNetUpdatesLeft_[i][j - 1]) + dt / dy_ * (hNetUpdatesAbove_[i - 1][j - 1] + hNetUpdatesBelow_[i - 1][j]);
+      hu_[i][j] -= dt / dx_ * (huNetUpdatesRight_[i - 1][j - 1] + huNetUpdatesLeft_[i][j - 1]);
+      hv_[i][j] -= dt / dy_ * (hvNetUpdatesAbove_[i - 1][j - 1] + hvNetUpdatesBelow_[i - 1][j]);
 
-      __m256d hNetRight = _mm256_loadu_pd(&hNetUpdatesRight_[i - 1][j - 1]);
-      __m256d hNetLeft  = _mm256_loadu_pd(&hNetUpdatesLeft_[i][j - 1]);
-      __m256d hNetAbove = _mm256_loadu_pd(&hNetUpdatesAbove_[i - 1][j - 1]);
-      __m256d hNetBelow = _mm256_loadu_pd(&hNetUpdatesBelow_[i - 1][j]);
+      if (h_[i][j] < 0) {
+#ifndef NDEBUG
+        // Only print this warning when debug is enabled
+        // Otherwise we cannot vectorize this loop
+        if (h_[i][j] < -0.1) {
+          std::cerr << "Warning, negative height: (i,j)=(" << i << "," << j << ")=" << h_[i][j] << std::endl;
+          std::cerr << "         b: " << b_[i][j] << std::endl;
+        }
+#endif
 
-      __m256d huNetRight = _mm256_loadu_pd(&huNetUpdatesRight_[i - 1][j - 1]);
-      __m256d huNetLeft  = _mm256_loadu_pd(&huNetUpdatesLeft_[i][j - 1]);
-
-      __m256d hvNetAbove = _mm256_loadu_pd(&hvNetUpdatesAbove_[i - 1][j - 1]);
-      __m256d hvNetBelow = _mm256_loadu_pd(&hvNetUpdatesBelow_[i - 1][j]);
-
-      __m256d hUpdate  = _mm256_add_pd(_mm256_mul_pd(dt_dx, _mm256_add_pd(hNetRight, hNetLeft)), _mm256_mul_pd(dt_dy, _mm256_add_pd(hNetAbove, hNetBelow)));
-      __m256d huUpdate = _mm256_mul_pd(dt_dx, _mm256_add_pd(huNetRight, huNetLeft));
-      __m256d hvUpdate = _mm256_mul_pd(dt_dy, _mm256_add_pd(hvNetAbove, hvNetBelow));
-
-      h  = _mm256_sub_pd(h, hUpdate);
-      hu = _mm256_sub_pd(hu, huUpdate);
-      hv = _mm256_sub_pd(hv, hvUpdate);
-
-      // Handle negative heights and dry cells
-      __m256d maskNegative = _mm256_cmp_pd(h, zero, _CMP_LT_OQ);
-      __m256d maskDry      = _mm256_cmp_pd(h, dryTol, _CMP_LT_OQ);
-
-      h  = _mm256_blendv_pd(h, zero, maskNegative);
-      hu = _mm256_blendv_pd(hu, zero, maskNegative);
-      hv = _mm256_blendv_pd(hv, zero, maskNegative);
-
-      hu = _mm256_blendv_pd(hu, zero, maskDry);
-      hv = _mm256_blendv_pd(hv, zero, maskDry);
-
-      _mm256_storeu_pd(&h_[i][j], h);
-      _mm256_storeu_pd(&hu_[i][j], hu);
-      _mm256_storeu_pd(&hv_[i][j], hv);
+        // Zero (small) negative depths
+        h_[i][j] = hu_[i][j] = hv_[i][j] = RealType(0.0);
+      } else if (h_[i][j] < 0.1) {             // dryTol
+        hu_[i][j] = hv_[i][j] = RealType(0.0); // No water, no speed!
+      }
     }
   }
 }
