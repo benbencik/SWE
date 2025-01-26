@@ -35,7 +35,6 @@
 #ifdef WITH_SOLVER_HYBRID
 #include "HybridSolver.hpp"
 #elif defined(WITH_SOLVER_FWAVE)
-#include "FWaveSolver.hpp"
 #include "FWaveVecSolver.hpp"
 #elif defined(WITH_SOLVER_AUGRIE)
 #include "AugRieSolver.hpp"
