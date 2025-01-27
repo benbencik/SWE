@@ -28,6 +28,15 @@ Navigate into the `work` directory and continue with the steps below.
 
 ## Build and Test
 
+This project uses submodules to include external dependencies. To add the `SWE-Solvers` submodule, follow these steps:
+
+```sh
+    git submodule init
+    git submodule add https://github.com/benbencik/SWE-Solvers.git external/SWE-Solvers
+    git submodule update --recursive --remote
+```
+
+
 As build system configurator we use CMake. To compile the code execute the following commands in this directory:
 
 * Create a build directory: `mkdir build`. You can also choose any other name for your build directory.
