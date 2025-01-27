@@ -44,7 +44,7 @@ cd build
 Lastly, run CMake and Make:
 
 ```sh
-cmake ..
+cmake .. -DEANBLE_OPENMP=ON -DENABLE_VECTORIZATION=ON
 make
 ```
 
